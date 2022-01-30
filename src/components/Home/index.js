@@ -1,6 +1,6 @@
 import Banner from './Banner';
 import MainView from './MainView';
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
 import Tags from './Tags';
 import agent from '../../agent';
 import { connect } from 'react-redux';
@@ -9,6 +9,7 @@ import {
   HOME_PAGE_UNLOADED,
   APPLY_TAG_FILTER
 } from '../../constants/actionTypes';
+import { TrackerContext } from '../../lib/tracker';
 
 const Promise = global.Promise;
 
@@ -27,47 +28,55 @@ const mapDispatchToProps = dispatch => ({
     dispatch({  type: HOME_PAGE_UNLOADED })
 });
 
-class Home extends React.Component {
-  componentWillMount() {
-    const tab = this.props.token ? 'feed' : 'all';
-    const articlesPromise = this.props.token ?
-      agent.Articles.feed :
-      agent.Articles.all;
+const Home = ({
+  token,
+  appName,
+  tags,
+  onClickTag,
+  onLoad,
+  onUnload
+}) => {
+  const tracker = useContext(TrackerContext);
 
-    this.props.onLoad(tab, articlesPromise, Promise.all([agent.Tags.getAll(), articlesPromise()]));
-  }
+  useEffect(() => {
+    const tab = token ? 'feed' : 'all';
+    const articlesPromise = token ? agent.Articles.feed : agent.Articles.all;
 
-  componentWillUnmount() {
-    this.props.onUnload();
-  }
+    onLoad(tab, articlesPromise, Promise.all([agent.Tags.getAll(), articlesPromise()]));
 
-  render() {
-    return (
-      <div className="home-page">
+    // Track page
+    tracker.track('Load homepage');
 
-        <Banner token={this.props.token} appName={this.props.appName} />
+    return () => {
+      onUnload();
+    };
+  }, [token]);
 
-        <div className="container page">
-          <div className="row">
-            <MainView />
+  return (
+    <div className="home-page">
 
-            <div className="col-md-3">
-              <div className="sidebar">
+      <Banner token={token} appName={appName} />
 
-                <p>Popular Tags</p>
+      <div className="container page">
+        <div className="row">
+          <MainView />
 
-                <Tags
-                  tags={this.props.tags}
-                  onClickTag={this.props.onClickTag} />
+          <div className="col-md-3">
+            <div className="sidebar">
 
-              </div>
+              <p>Popular Tags</p>
+
+              <Tags
+                tags={tags}
+                onClickTag={onClickTag} />
+
             </div>
           </div>
         </div>
-
       </div>
-    );
-  }
-}
+
+    </div>
+  );
+};
 
 export default connect(mapStateToProps, mapDispatchToProps)(Home);
